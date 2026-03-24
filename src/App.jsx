@@ -444,10 +444,9 @@ export default function App() {
             <div style={{ width: 32, height: 32, borderRadius: 8, background: "#1a56db", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🦾</div>
             <span style={{ fontWeight: 700, fontSize: 16, color: "#111827" }}>Моторика</span>
           </button>
-          {page === "home"
-            ? <button type="button" onClick={() => setPage("survey")} style={SS.btnPrimary}>Примерить онлайн</button>
-            : <button type="button" onClick={resetAll} style={SS.btnGhost}>← На главную</button>
-          }
+          {page !== "home" && (
+            <button type="button" onClick={resetAll} style={SS.btnGhost}>← На главную</button>
+          )}
         </div>
       </nav>
 
@@ -466,7 +465,6 @@ export default function App() {
             </p>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button type="button" onClick={() => setPage("survey")} style={SS.btnPrimary}>Начать примерку</button>
-              <button type="button" style={SS.btnOutline}>Смотреть каталог</button>
             </div>
           </div>
 
