@@ -705,14 +705,49 @@ export default function App() {
                         {getAssetsFor(p.id).length > 0 && (
                           <div style={{ marginBottom: 12, marginTop: 12 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>Доступные модели:</div>
-                            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+                            <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 8, paddingTop: 4 }}>
                               {getAssetsFor(p.id).map(a => (
                                 <button type="button" key={a.url} onClick={(e) => { e.stopPropagation(); setActiveAsset(a); }}
-                                  style={{ border: activeAsset?.url === a.url ? '2px solid #1a56db' : '1px solid #e5e7eb', borderRadius: 8, padding: 4, background: '#fff', cursor: "pointer", flexShrink: 0 }}>
-                                  <div style={{ fontSize: 24, textAlign: "center", width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", background: "#f3f4f6", borderRadius: 4 }}>
-                                    {a.type === '3d' ? '🧊' : '🖼️'}
+                                  style={{ 
+                                    border: activeAsset?.url === a.url ? '2px solid #1a56db' : '1.5px solid #f3f4f6', 
+                                    borderRadius: 12, 
+                                    padding: 6, 
+                                    background: activeAsset?.url === a.url ? '#EFF6FF' : '#fff', 
+                                    cursor: "pointer", 
+                                    flexShrink: 0,
+                                    width: 80,
+                                    transition: "all 0.2s ease"
+                                  }}>
+                                  <div style={{ 
+                                    width: 66, 
+                                    height: 66, 
+                                    display: "flex", 
+                                    alignItems: "center", 
+                                    justifyContent: "center", 
+                                    background: "#f9fafb", 
+                                    borderRadius: 8,
+                                    overflow: "hidden",
+                                    marginBottom: 6,
+                                    border: "1px solid #f3f4f6"
+                                  }}>
+                                    {a.type === '3d' ? (
+                                      <div style={{ fontSize: 32 }}>🧊</div>
+                                    ) : (
+                                      <img src={a.url} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                                    )}
                                   </div>
-                                  <div style={{ fontSize: 10, textAlign: "center", marginTop: 4, maxWidth: 52, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</div>
+                                  <div style={{ 
+                                    fontSize: 9, 
+                                    textAlign: "center", 
+                                    color: activeAsset?.url === a.url ? "#1a56db" : "#6b7280",
+                                    fontWeight: activeAsset?.url === a.url ? 700 : 500,
+                                    width: "100%",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap"
+                                  }}>
+                                    {a.name.replace(/\.[^/.]+$/, "").substring(0, 15)}
+                                  </div>
                                 </button>
                               ))}
                             </div>
