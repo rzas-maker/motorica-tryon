@@ -710,43 +710,45 @@ export default function App() {
                                 <button type="button" key={a.url} onClick={(e) => { e.stopPropagation(); setActiveAsset(a); }}
                                   style={{ 
                                     border: activeAsset?.url === a.url ? '2px solid #1a56db' : '1.5px solid #f3f4f6', 
-                                    borderRadius: 12, 
-                                    padding: 6, 
+                                    borderRadius: 16, 
+                                    padding: 8, 
                                     background: activeAsset?.url === a.url ? '#EFF6FF' : '#fff', 
                                     cursor: "pointer", 
                                     flexShrink: 0,
-                                    width: 80,
-                                    transition: "all 0.2s ease"
+                                    width: 180,
+                                    transition: "all 0.2s ease",
+                                    boxShadow: activeAsset?.url === a.url ? '0 4px 12px rgba(26,86,219,0.15)' : 'none'
                                   }}>
                                   <div style={{ 
-                                    width: 66, 
-                                    height: 66, 
+                                    width: 164, 
+                                    height: 164, 
                                     display: "flex", 
                                     alignItems: "center", 
                                     justifyContent: "center", 
                                     background: "#f9fafb", 
-                                    borderRadius: 8,
+                                    borderRadius: 12,
                                     overflow: "hidden",
-                                    marginBottom: 6,
+                                    marginBottom: 8,
                                     border: "1px solid #f3f4f6"
                                   }}>
                                     {a.type === '3d' ? (
-                                      <div style={{ fontSize: 32 }}>🧊</div>
+                                      <div style={{ fontSize: 64 }}>🧊</div>
                                     ) : (
                                       <img src={a.url} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                                     )}
                                   </div>
                                   <div style={{ 
-                                    fontSize: 9, 
+                                    fontSize: 10, 
                                     textAlign: "center", 
                                     color: activeAsset?.url === a.url ? "#1a56db" : "#6b7280",
                                     fontWeight: activeAsset?.url === a.url ? 700 : 500,
                                     width: "100%",
                                     overflow: "hidden",
                                     textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap"
+                                    whiteSpace: "nowrap",
+                                    padding: "0 4px"
                                   }}>
-                                    {a.name.replace(/\.[^/.]+$/, "").substring(0, 15)}
+                                    {a.name.replace(/\.[^/.]+$/, "")}
                                   </div>
                                 </button>
                               ))}
