@@ -1,4 +1,15 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls, useGLTF, Center } from "@react-three/drei";
+
+const PROS_2D = import.meta.glob('./assets/prostheses/**/*.png', { eager: true, query: '?url', import: 'default' });
+const PROS_3D = import.meta.glob('./assets/prostheses/**/*.{glb,gltf}', { eager: true, query: '?url', import: 'default' });
+
+const getAssetsFor = (id) => {
+  const arr2d = Object.entries(PROS_2D).filter(([p]) => p.includes(`/${id}/`)).map(([p, url]) => ({ type: '2d', url, name: p.split('/').pop() }));
+  const arr3d = Object.entries(PROS_3D).filter(([p]) => p.includes(`/${id}/`)).map(([p, url]) => ({ type: '3d', url, name: p.split('/').pop() }));
+  return [...arr2d, ...arr3d];
+};
 
 const CATALOG = [
   // Плечо
@@ -12,6 +23,11 @@ const CATALOG = [
   { id: "manifesto_f", name: "МАНИФЕСТО Фингерс", type: "bionic", level: "hand", desc: "Бионический протез пальцев с индивидуальным управлением", socketY: 0.80 },
   { id: "cybi_f", name: "КИБИ Фингерс", type: "traction", level: "hand", desc: "Тяговый протез кисти с подвижным запястьем", socketY: 0.72 },
 ];
+
+function Model3D({ url }) {
+  const { scene } = useGLTF(url);
+  return <primitive object={scene} />;
+}
 
 const SURVEY_LEVELS = [
   { id: "shoulder", label: "Плечо", sub: "Ампутация выше локтя", emoji: "💪" },
@@ -49,7 +65,71 @@ function Upload({ onFile, accept, label, done, doneLabel, style, small }) {
 }
 
 // ── Холст примерки ────────────────────────────────────────────────────────────
-function TryOnCanvas({ photoUrl, prosUrl, socketY = 0.78 }) {
+
+function TryOnCanvas3D({ photoUrl, activeAsset }) {
+  const wrapRef = useRef();
+  const [size, setSize] = useState({ w: 380, h: 500 });
+  
+  useEffect(() => {
+    if (!photoUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      const w = wrapRef.current ? Math.min(wrapRef.current.offsetWidth, 500) : 380;
+      setSize({ w, h: Math.round(w * img.naturalHeight / img.naturalWidth) });
+    };
+    img.src = photoUrl;
+  }, [photoUrl]);
+
+  return (
+    <div ref={wrapRef} style={{ width: "100%" }}>
+      <div style={{ position: "relative", userSelect: "none", borderRadius: 12, overflow: "hidden", border: "1px solid #e5e7eb", width: size.w, height: size.h }}>
+        <img src={photoUrl} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", display: "block", objectFit: "cover" }} alt="" />
+        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}>
+          <Canvas camera={{ position: [0, 0, 5], fov: 50 }} gl={{ preserveDrawingBuffer: true }}>
+            <ambientLight intensity={2} />
+            <directionalLight position={[5, 10, 5]} intensity={2} />
+            <Suspense fallback={null}>
+              <Center>
+                <Model3D url={activeAsset.url} />
+              </Center>
+            </Suspense>
+            <OrbitControls makeDefault />
+          </Canvas>
+        </div>
+        <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, background: "rgba(255,255,255,.88)", borderRadius: 8, padding: "6px 12px", fontSize: 11, color: "#374151", textAlign: "center", pointerEvents: "none" }}>
+          Крутите 3D-модель (один палец) · Двигайте (два пальца) · Масштаб (щипок)
+        </div>
+      </div>
+      <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, marginTop: 12 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 14 }}>3D-Примерка</div>
+        <button type="button" onClick={() => {
+            const out = document.createElement("canvas");
+            out.width = size.w; out.height = size.h;
+            const ctx = out.getContext("2d");
+            const img = new Image();
+            img.onload = () => {
+              ctx.drawImage(img, 0, 0, size.w, size.h);
+              const glCanvas = wrapRef.current.querySelector('canvas');
+              if (glCanvas) ctx.drawImage(glCanvas, 0, 0, size.w, size.h);
+              const a = document.createElement("a"); a.href = out.toDataURL("image/png"); a.download = "motorica-3d-примерка.png"; a.click();
+            };
+            img.src = photoUrl;
+        }} style={{ padding: 10, background: "#1a56db", border: "none", borderRadius: 8, color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", width: "100%" }}>
+          Сохранить фото
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TryOnCanvas({ photoUrl, activeAsset, socketY }) {
+  if (!activeAsset) return null;
+  if (activeAsset.type === '3d') return <TryOnCanvas3D photoUrl={photoUrl} activeAsset={activeAsset} />;
+  return <TryOnCanvas2D photoUrl={photoUrl} activeAsset={activeAsset} socketY={socketY} />;
+}
+
+function TryOnCanvas2D({ photoUrl, activeAsset, socketY = 0.78 }) {
+  const prosUrl = activeAsset.url;
   const wrapRef = useRef();
   const photoRef = useRef();
   const prosRef = useRef();
@@ -405,21 +485,23 @@ function TryOnCanvas({ photoUrl, prosUrl, socketY = 0.78 }) {
 export default function App() {
   const [page, setPage] = useState("home");  // home | survey | tryon
   const [survSide, setSurvSide] = useState(null);    // "right" | "left"
-  const [survLevel, setSurvLevel] = useState(null);    // "shoulder"|"forearm"|"hand"
+  const [survLevel, setSurvLevel] = useState(null);  // "shoulder"|"forearm"|"hand"
   const [photoUrl, setPhotoUrl] = useState(null);
-  const [prosUrl, setProsUrl] = useState(null);
+  const [activeAsset, setActiveAsset] = useState(null); // { type: '2d'|'3d', url }
   const [socketY, setSocketY] = useState(0.78);
-  const [prosAssets, setProsAssets] = useState({});
+  const [prosAssets, setProsAssets] = useState({}); // user uploaded assets
   const [selProsId, setSelProsId] = useState(null);
 
   const handlePhoto = async f => { const d = await readFile(f); setPhotoUrl(d.url); };
-  const handleProsFile = async (f, id) => { const d = await readFile(f); setProsAssets(m => ({ ...m, [id]: d.url })); };
+  const handleProsFile = async (f, id) => { 
+    const d = await readFile(f); 
+    setProsAssets(m => ({ ...m, [id]: d.url })); 
+    setActiveAsset({ type: '2d', url: d.url }); 
+  };
 
-  // Протезы по результатам опроса
   const surveyPros = CATALOG.filter(p => p.level === survLevel);
-
   const startTryon = () => { setPage("tryon"); };
-  const resetAll = () => { setPage("home"); setSurvSide(null); setSurvLevel(null); setPhotoUrl(null); setProsUrl(null); setSelProsId(null); };
+  const resetAll = () => { setPage("home"); setSurvSide(null); setSurvLevel(null); setPhotoUrl(null); setActiveAsset(null); setSelProsId(null); };
 
   const SS = {
     card: { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20 },
@@ -618,22 +700,44 @@ export default function App() {
                       </div>
                       {selProsId === p.id && <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1a56db", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, flexShrink: 0 }}>✓</div>}
                     </div>
-                    {/* Загрузка PNG */}
                     {selProsId === p.id && (
                       <div style={{ padding: "0 18px 16px", borderTop: "1px solid #f3f4f6" }}>
-                        <Upload small accept="image/png,image/*"
-                          onFile={async f => { await handleProsFile(f, p.id); const d = await readFile(f); setProsUrl(d.url); }}
-                          label="📎 Загрузить PNG протеза (с прозрачным фоном)"
-                          done={!!prosAssets[p.id]}
-                          doneLabel="✓ PNG загружен — нажмите чтобы заменить"
+                        {getAssetsFor(p.id).length > 0 && (
+                          <div style={{ marginBottom: 12, marginTop: 12 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>Доступные модели:</div>
+                            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+                              {getAssetsFor(p.id).map(a => (
+                                <button type="button" key={a.url} onClick={(e) => { e.stopPropagation(); setActiveAsset(a); }}
+                                  style={{ border: activeAsset?.url === a.url ? '2px solid #1a56db' : '1px solid #e5e7eb', borderRadius: 8, padding: 4, background: '#fff', cursor: "pointer", flexShrink: 0 }}>
+                                  <div style={{ fontSize: 24, textAlign: "center", width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", background: "#f3f4f6", borderRadius: 4 }}>
+                                    {a.type === '3d' ? '🧊' : '🖼️'}
+                                  </div>
+                                  <div style={{ fontSize: 10, textAlign: "center", marginTop: 4, maxWidth: 52, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <Upload small accept="image/*,.glb,.gltf"
+                          onFile={async f => { 
+                            if(f.name.endsWith('.glb') || f.name.endsWith('.gltf')) {
+                               const url = URL.createObjectURL(f);
+                               setActiveAsset({ type: '3d', url });
+                            } else {
+                               await handleProsFile(f, p.id); 
+                            }
+                          }}
+                          label="📎 Загрузить свой файл (PNG/GLB)"
+                          done={!!prosAssets[p.id] || activeAsset?.url.startsWith('blob:')}
+                          doneLabel="✓ Свой файл загружен — заменить"
                           style={{ marginTop: 10 }} />
                       </div>
                     )}
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={startTryon} disabled={!selProsId}
-                style={{ ...SS.btnPrimary, width: "100%", padding: 14, fontSize: 15, opacity: selProsId ? 1 : .4, cursor: selProsId ? "pointer" : "not-allowed" }}>
+              <button type="button" onClick={startTryon} disabled={!activeAsset}
+                style={{ ...SS.btnPrimary, width: "100%", padding: 14, fontSize: 15, opacity: activeAsset ? 1 : .4, cursor: activeAsset ? "pointer" : "not-allowed" }}>
                 Перейти к примерке →
               </button>
             </div>
@@ -662,10 +766,10 @@ export default function App() {
                 </div>
               ) : (
                 <div>
-                  <TryOnCanvas photoUrl={photoUrl} prosUrl={prosUrl} socketY={socketY} />
+                  <TryOnCanvas photoUrl={photoUrl} activeAsset={activeAsset} socketY={socketY} />
                   <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
                     <Upload accept="image/*" onFile={handlePhoto} label="Заменить фото" done={true} doneLabel="Заменить фото" small style={{ flex: 1 }} />
-                    <button type="button" onClick={() => { setPhotoUrl(null); setProsUrl(null); setSelProsId(null); }} style={{ ...SS.btnGhost, fontSize: 12, padding: "7px 14px" }}>Сбросить всё</button>
+                    <button type="button" onClick={() => { setPhotoUrl(null); setActiveAsset(null); setSelProsId(null); }} style={{ ...SS.btnGhost, fontSize: 12, padding: "7px 14px" }}>Сбросить всё</button>
                   </div>
                 </div>
               )}
